@@ -149,8 +149,17 @@ final class Watchdog: ObservableObject {
 @main
 struct DisplayLabMenuApp: App {
     @StateObject private var watchdog = Watchdog()
-    @State private var builtinClosed = false
+    @State private var builtinClosed: Bool
     @State private var statusMessage = ""
+
+    init() {
+        // 启动时同步内建屏的真实状态，避免图标与系统实际状态脱节。
+        var closed = false
+        if let builtin = builtinDisplay() {
+            closed = !builtinNeedsDisable(builtin)
+        }
+        _builtinClosed = State(initialValue: closed)
+    }
 
     var body: some Scene {
         MenuBarExtra {
@@ -169,7 +178,7 @@ struct DisplayLabMenuApp: App {
                     }
                 } label: {
                     Label(builtinClosed ? "恢复内建屏" : "关闭内建屏",
-                          systemImage: builtinClosed ? "display" : "display.slash")
+                          systemImage: builtinClosed ? "display" : "rectangle.slash")
                 }
 
                 // 值守开关
@@ -200,7 +209,7 @@ struct DisplayLabMenuApp: App {
             .padding(12)
             .frame(width: 260)
         } label: {
-            Image(systemName: builtinClosed ? "display.slash" : "display")
+            Image(systemName: builtinClosed ? "rectangle.slash" : "display")
         }
     }
 }
