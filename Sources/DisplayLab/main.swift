@@ -21,11 +21,13 @@ func printHelp() {
                          独显遥测：功耗 / 温度 / 利用率（只读，不需要 root）
       off                关闭内建屏（内建屏不出画时用它保持关闭）
       on                 恢复内建屏
+      watch [--interval N]
+                         常驻值守：检测到内建屏被系统恢复后自动重新关闭（默认每 3s 检查）
       help               本帮助
 
     安全约定：
       · off / on 只作用于内建屏，且用 kCGConfigureForSession 提交 —— 注销或重启自动复原。
-      · 当除了内建屏之外没有别的屏在出画时，off 会拒绝执行。
+      · 当除了内建屏之外没有别的屏在出画时，off 会拒绝执行（watch 会静默等待外接屏恢复）。
       · 所有只读子命令都不会改动任何系统状态。
     """)
 }
@@ -36,6 +38,12 @@ case "list":           cmdList()
 case "gpu":            cmdGPU(options)
 case "off":            cmdSetBuiltin(false)
 case "on":             cmdSetBuiltin(true)
+case "watch":
+    var interval: TimeInterval = 3
+    if let idx = options.firstIndex(of: "--interval"), idx + 1 < options.count {
+        interval = TimeInterval(options[idx + 1]) ?? 3
+    }
+    cmdWatch(interval: max(1, interval))
 case "help", "-h", "--help": printHelp()
 default:
     print("未知子命令：\(command)\n")

@@ -175,3 +175,44 @@ func cmdSetBuiltin(_ enabled: Bool) {
         exit(3)
     }
 }
+
+// MARK: - watch：自动值守内建屏的关闭状态
+
+/// 内建屏是否处于「被关掉」的目标状态。
+///
+/// 注意（见 docs/PRIVATE-CG.md 的坑）：
+/// - 不能用 CGDisplayIsActive 判断「是否被启用」—— 它对内建屏恒为 false。
+/// - 关掉后最可靠的观测是：内建屏退出镜像集合（CGDisplayIsInMirrorSet → false）。
+/// 这里用「内建屏是否还挂在一个镜像集合里、或仍在出画」来判定它是否「又被系统恢复了」。
+func builtinNeedsReDisable(_ builtin: CGDirectDisplayID) -> Bool {
+    if CGDisplayIsInMirrorSet(builtin) != 0 { return true }
+    if CGDisplayMirrorsDisplay(builtin) != 0 { return true }
+    if isDrawing(builtin) { return true }
+    return false
+}
+
+func cmdWatch(interval: TimeInterval) {
+    guard let fn = loadConfigureDisplayEnabled() else { exit(1) }
+    // 关掉 stdout 缓冲：LaunchAgent 把日志重定向到文件时，块缓冲会导致 kill 后丢内容。
+    setvbuf(stdout, nil, _IONBF, 0)
+    print("displaylab watch：开始值守内建屏关闭状态，每 \(interval)s 检查一次。Ctrl-C 退出。")
+
+    // 首轮立即尝试关一次（幂等，已关则系统返回成功但无副作用）。
+    while true {
+        guard let builtin = builtinDisplay() else {
+            // 没有内建屏节点（排线已拔）→ 什么都不用做，睡到下次再查。
+            Thread.sleep(forTimeInterval: interval)
+            continue
+        }
+
+        let others = drawingDisplays(excluding: builtin)
+        if builtinNeedsReDisable(builtin) && !others.isEmpty {
+            // 内建屏又被系统恢复了，且外接屏仍在出画 → 安全地重新关掉。
+            _ = applyDisplayEnabled(builtin, false, fn: fn)
+        }
+        // 若 others 为空（外接屏也不在），不能关内建屏，否则黑屏 —— 静默跳过，
+        // 等外接屏回来后再关。这是安全阀的常驻形态。
+
+        Thread.sleep(forTimeInterval: interval)
+    }
+}

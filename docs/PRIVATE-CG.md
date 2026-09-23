@@ -49,6 +49,28 @@ CGCompleteDisplayConfiguration(config, .forSession)   // 只对本次登录会�
 - 符号出现在 macOS 10.6+，但**将来可能被移除**——所以必须 `dlopen`/`dlsym` 动态解析并优雅降级，
   不要编译期链接。
 
+## 自动值守（`watch` 子命令）
+
+系统会在唤醒/解锁/显示器重算后自行恢复内建屏，所以"关一次"不够。`displaylab watch` 是常驻
+进程，每隔 N 秒检查一次，发现内建屏又被系统恢复了就自动重新关掉。配套
+`scripts/watch-agent.sh` 把它注册成 LaunchAgent，登录时自动拉起。
+
+判定"内建屏又被恢复了"不能靠 `CGDisplayIsActive`（对内建屏恒 false），而是看
+`CGDisplayIsInMirrorSet` / `CGDisplayMirrorsDisplay` / `isDrawing` 三者是否有任一翻回真。
+
+安全阀的常驻形态：只有当"外接屏仍在出画"时才重新关内建屏；外接屏不在就静默等待，
+绝不把自己关成黑屏。
+
+```bash
+displaylab watch --interval 3     # 每 3 秒检查一次
+scripts/watch-agent.sh install    # 装成 LaunchAgent，登录自动启动
+scripts/watch-agent.sh uninstall  # 卸载
+```
+
+注意：LaunchAgent 的 plist 落在 `~/Library/LaunchAgents/`，加载需要 GUI 会话权限；
+在远程/非交互 shell（如通过 agent 执行）里 `launchctl bootstrap` 会报
+`Bootstrap failed: 5`——此时 plist 已就位，下次登录会自动加载。
+
 ## 坑
 
 1. **别用 `CGDisplayIsActive` 判断"是否被启用"**。实测它对内建屏恒为 `false`，

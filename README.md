@@ -35,13 +35,16 @@ displaylab gpu              # 独显功耗/温度/利用率，不需要 root（�
 displaylab gpu --avg 20     # 采 20 秒取平均 —— 做 A/B 对比用这个
 displaylab gpu --watch 3    # 每 3 秒串流
 displaylab off / on         # 关闭 / 恢复内建屏（会话级，注销即复原）
+displaylab watch            # 常驻值守：内建屏被系统恢复（唤醒/解锁）后自动重新关闭
 ```
 
-`scripts/` 里还有两个 shell 工具，处理"必须用 shell 更合适"的活：
+`scripts/` 里还有几个 shell 工具，处理"必须用 shell 更合适"的活：
 
 ```bash
 ./scripts/gpu-owner.sh              # 基于 ioreg 缩进树的显卡归属诊断（who 的姊妹实现）
 sudo ./scripts/force-igpu-test.sh   # 实测 gpuswitch 0（带 trap 自动回滚，跑前先开 SSH）
+./scripts/watch-agent.sh install    # 安装内建屏自动值守的 LaunchAgent（登录时自动拉起 watch）
+./scripts/watch-agent.sh uninstall  # 卸载（彻底恢复原状）
 ```
 
 ## 安全约定
