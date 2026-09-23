@@ -1,0 +1,14 @@
+# 构建产物
+build/
+*.o
+*.dSYM/
+
+# macOS
+.DS_Store
+._*
+
+# 本地 agent 工作区数据（不属于本项目的发布内容）
+.workbuddy/
+
+# legacy 里保留的早期编译产物
+legacy/bin/
